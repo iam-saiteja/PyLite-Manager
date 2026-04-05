@@ -12,7 +12,6 @@ class PythonVersionInfo:
     spec: str
     display: str
     executable: str
-    path_rank: int = -1
     is_default: bool = False
 
 

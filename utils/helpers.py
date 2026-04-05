@@ -54,19 +54,26 @@ def open_in_explorer(path: str | Path) -> None:
 
 
 def calculate_directory_size(path: str | Path) -> int:
-    total_size = 0
     root_path = Path(path)
     if not root_path.exists():
         return 0
 
-    for dirpath, _dirnames, filenames in os.walk(root_path):
-        current_dir = Path(dirpath)
-        for filename in filenames:
-            file_path = current_dir / filename
-            try:
-                total_size += file_path.stat().st_size
-            except OSError:
-                continue
+    total_size = 0
+    stack = [root_path]
+    while stack:
+        current_path = stack.pop()
+        try:
+            with os.scandir(current_path) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(Path(entry.path))
+                        elif entry.is_file(follow_symlinks=False):
+                            total_size += entry.stat(follow_symlinks=False).st_size
+                    except OSError:
+                        continue
+        except OSError:
+            continue
     return total_size
 
 

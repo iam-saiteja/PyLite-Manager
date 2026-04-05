@@ -33,38 +33,152 @@ def _parse_pyvenv_cfg(config_path: Path) -> str:
     return version or "Unknown"
 
 
+def _looks_like_venv(directory: Path) -> tuple[bool, Path | None]:
+    config_path = directory / "pyvenv.cfg"
+    if config_path.is_file():
+        return True, config_path
+
+    scripts_python = directory / "Scripts" / "python.exe"
+    scripts_activate = directory / "Scripts" / "activate.bat"
+    scripts_pip = directory / "Scripts" / "pip.exe"
+    lib_site_packages = directory / "Lib" / "site-packages"
+    if scripts_python.is_file() and (scripts_activate.is_file() or scripts_pip.is_file() or lib_site_packages.is_dir()):
+        return True, config_path if config_path.exists() else None
+
+    scripts_dir = directory / "Scripts"
+    if scripts_dir.is_dir() and lib_site_packages.is_dir():
+        return True, config_path if config_path.exists() else None
+
+    bin_python = directory / "bin" / "python"
+    bin_activate = directory / "bin" / "activate"
+    bin_pip = directory / "bin" / "pip"
+    unix_site_packages = directory / "lib"
+    if bin_python.is_file() and (bin_activate.is_file() or bin_pip.is_file() or unix_site_packages.is_dir()):
+        return True, config_path if config_path.exists() else None
+
+    bin_dir = directory / "bin"
+    if bin_dir.is_dir() and unix_site_packages.is_dir():
+        return True, config_path if config_path.exists() else None
+
+    return False, None
+
+
 def find_venvs(scan_roots: Iterable[Path]) -> list[VenvInfo]:
     discovered: dict[str, VenvInfo] = {}
+    ignored_names = {
+        ".git",
+        ".hg",
+        ".svn",
+        "__pycache__",
+        "node_modules",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".tox",
+        ".nox",
+    }
 
     for root in scan_roots:
         if not root.exists():
             continue
 
-        for dirpath, dirnames, filenames in os.walk(root):
-            current_dir = Path(dirpath)
-            if "pyvenv.cfg" in filenames:
-                config_path = current_dir / "pyvenv.cfg"
-                resolved = str(current_dir.resolve())
-                if resolved not in discovered:
-                    discovered[resolved] = VenvInfo(
+        stack = [root]
+        while stack:
+            current_dir = stack.pop()
+
+            is_current_venv, current_cfg = _looks_like_venv(current_dir)
+            if is_current_venv:
+                resolved_current = str(current_dir.resolve())
+                if resolved_current not in discovered:
+                    discovered[resolved_current] = VenvInfo(
                         name=current_dir.name,
                         path=current_dir,
-                        python_version=_parse_pyvenv_cfg(config_path),
-                        config_path=config_path,
+                        python_version=_parse_pyvenv_cfg(current_cfg) if current_cfg is not None else "Unknown",
+                        config_path=current_cfg if current_cfg is not None else current_dir / "pyvenv.cfg",
                     )
-                dirnames[:] = []
+                continue
+
+            try:
+                with os.scandir(current_dir) as entries:
+                    child_dirs: list[Path] = []
+                    for entry in entries:
+                        try:
+                            if not entry.is_dir(follow_symlinks=False):
+                                continue
+                            child_path = Path(entry.path)
+                            if child_path.name.lower() in ignored_names:
+                                continue
+                            child_dirs.append(child_path)
+                            is_venv, config_path = _looks_like_venv(child_path)
+                            if is_venv:
+                                resolved = str(child_path.resolve())
+                                if resolved not in discovered:
+                                    discovered[resolved] = VenvInfo(
+                                        name=child_path.name,
+                                        path=child_path,
+                                        python_version=_parse_pyvenv_cfg(config_path) if config_path is not None else "Unknown",
+                                        config_path=config_path if config_path is not None else child_path / "pyvenv.cfg",
+                                    )
+                                continue
+                        except OSError:
+                            continue
+                    stack.extend(child_dirs)
+            except OSError:
+                continue
 
     return sorted(discovered.values(), key=lambda item: (item.name.lower(), str(item.path).lower()))
 
 
 def open_venv_terminal(venv_path: Path) -> None:
     activate_path = venv_path / "Scripts" / "activate.bat"
-    command = f'cd /d "{venv_path}" && call "{activate_path}"'
+    scripts_path = venv_path / "Scripts"
+    root_python = venv_path / "python.exe"
+    scripts_python = scripts_path / "python.exe"
+    if activate_path.exists():
+        command = f'cd /d "{venv_path}" && call "{activate_path}"'
+    elif scripts_python.exists():
+        command = (
+            f'cd /d "{venv_path}" && '
+            f'set "VIRTUAL_ENV={venv_path}" && '
+            f'set "PATH={scripts_path};%PATH%"'
+        )
+    elif root_python.exists():
+        command = f'cd /d "{venv_path}" && set "PATH={venv_path};%PATH%"'
+    else:
+        command = f'cd /d "{venv_path}"'
     subprocess.Popen(["cmd.exe", "/k", command])
 
 
 def open_folder(venv_path: Path) -> None:
     subprocess.Popen(["explorer", str(venv_path)])
+
+
+def find_python_uninstaller(executable: Path) -> Path | None:
+    install_root = executable.parent
+    search_roots = [install_root]
+    if install_root.parent != install_root:
+        search_roots.append(install_root.parent)
+
+    candidates: list[Path] = []
+    for search_root in search_roots:
+        if not search_root.exists():
+            continue
+        for pattern in ("uninstall*.exe", "*uninstall*.exe", "Uninstall*.exe"):
+            candidates.extend(candidate for candidate in search_root.glob(pattern) if candidate.is_file())
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda candidate: ("python" not in candidate.name.lower(), len(candidate.name), candidate.name.lower()))
+    return candidates[0]
+
+
+def uninstall_python_installation(executable: Path) -> Path:
+    uninstaller = find_python_uninstaller(executable)
+    if uninstaller is None:
+        raise FileNotFoundError(f"No Python uninstaller was found near: {executable.parent}")
+
+    subprocess.Popen([str(uninstaller)], cwd=str(uninstaller.parent))
+    return uninstaller
 
 
 def delete_venv(venv_path: Path) -> None:
