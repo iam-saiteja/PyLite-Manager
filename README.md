@@ -1,4 +1,61 @@
-# PyLite Manager
+﻿# PyLite Manager
+
+PyLite Manager is a lightweight Windows desktop app for managing Python installations, virtual environments, and installed packages.
+
+## Features
+
+- Detects Python installations registered with the Windows Python Launcher
+- Finds virtual environments across configured folders
+- Lists installed packages with versions and sizes
+- Supports package search, update, downgrade, and uninstall
+- Set a selected Python as the default in your PATH
+- Responsive UI with background operations
+
+## Requirements
+
+- Windows 7 or later
+- Python 3.9 or higher
+- tkinter and pip
+
+## Installation
+
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd PyLite_Manager
+   ```
+
+2. Run the app:
+   ```bash
+   python main.py
+   ```
+
+## Usage
+
+1. Run `python main.py`
+2. Select a Python or virtual environment in the left panel
+3. View and manage packages in the right panel
+4. Add scan folders to discover more virtual environments
+
+## Configuration
+
+Settings are stored in `%LOCALAPPDATA%\PyLite_Manager\config.json`:
+
+- `scan_folders`: directories to search for virtual environments
+- `default_python_path`: the last Python path set as default
+
+## Project Structure
+
+- `main.py` — entry point
+- `core/` — Python detection, venv management, package management, PATH handling
+- `ui/` — UI components
+- `utils/` — helpers and configuration
+
+## Troubleshooting
+
+- If no Python versions appear, verify `py --version` works in Command Prompt
+- If a virtual environment is missing, add its parent folder to scan folders and refresh
+- If the app won't start, delete the config file and try again
 
 A comprehensive, lightweight desktop application for managing Python environments, virtual environments, and packages on Windows. PyLite Manager provides an intuitive graphical interface to discover, organize, and maintain multiple Python installations and virtual environments with real-time package management capabilities.
 
@@ -13,8 +70,6 @@ A comprehensive, lightweight desktop application for managing Python environment
 - [Configuration](#configuration)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
-- [GitHub Actions & CI/CD](#github-actions--cicd)
-- [Testing](#testing)
 - [Contributors](#contributors)
 - [License](#license)
 
@@ -573,17 +628,6 @@ Status Update & UI Refresh (main_window.py)
 - Minimal external dependencies (zero pip requirements)
 - Clean separation of concerns: core, ui, utils
 
-### Testing
-
-Manual testing checklist:
-- [ ] Detect all installed Python versions
-- [ ] Find venvs in multiple scan folders
-- [ ] Create new virtual environment
-- [ ] Search and filter packages
-- [ ] Update/downgrade packages
-- [ ] Set default Python
-- [ ] Edit config file and verify changes persist
-- [ ] Right-click operations work without unwanted selections
 
 ### Future Enhancements
 
@@ -595,186 +639,6 @@ Potential improvements:
 - Linux and macOS support
 - Requirements.txt import/export
 - Virtual environment cloning
-
----
-
-## GitHub Actions & CI/CD
-
-### Automated Builds
-
-PyLite Manager uses GitHub Actions to automatically build and release Windows executable files.
-
-#### Build Pipeline
-
-**Workflow**: `.github/workflows/build-release.yml`
-
-**Trigger Events**:
-- New release created
-- Manual trigger (workflow_dispatch)
-
-**Build Steps**:
-1. Checkout repository
-2. Set up Python 3.11
-3. Install dependencies (PyInstaller)
-4. Build standalone `.exe` using PyInstaller
-5. Create GitHub Release with executable attached
-
-**Output**: 
-- `PyLiteManager.exe` - Standalone executable (no Python required)
-- Release page with download link and changelog
-
-#### How to Create a Release
-
-1. **Tag a Release**:
-   ```bash
-   git tag -a v1.0.0 -m "Release version 1.0.0"
-   git push origin v1.0.0
-   ```
-
-2. **Create Release on GitHub**:
-   - Go to: https://github.com/[owner]/PyLite_Manager/releases/new
-   - Select tag: `v1.0.0`
-   - Add release notes and description
-   - Click "Publish release"
-
-3. **GitHub Actions Automatically**:
-   - Builds the `.exe` file
-   - Uploads it to the release
-   - Makes it available for download
-
-#### Workflow Configuration
-
-The workflow file builds using:
-```yaml
-PyInstaller Configuration:
-  - Spec File: PyLite_Manager.spec
-  - Output: dist/PyLiteManager.exe
-  - Include: core/, ui/, utils/ modules
-  - Single File: Yes (self-contained executable)
-```
-
-#### Download Executable
-
-Users can download the latest executable from:
-- [Releases Page](https://github.com/[owner]/PyLite_Manager/releases)
-- Direct download: Latest `PyLiteManager.exe`
-- No Python installation required
-- Works on Windows 7 and later
-
----
-
-## Testing
-
-### Manual Testing Checklist
-
-Before each release, verify:
-
-#### Python Version Detection
-- [ ] All installed Python versions appear in the list
-- [ ] Version numbers display correctly
-- [ ] Executable paths are accurate
-- [ ] Default status shows correctly
-
-#### Virtual Environment Discovery
-- [ ] Add scan folder and click Refresh
-- [ ] Custom-named venvs are detected
-- [ ] Unix and Windows-style envs both found
-- [ ] Search filters environments by name/path
-- [ ] No duplicate environments listed
-
-#### Virtual Environment Operations
-- [ ] Create new venv (custom name/location)
-- [ ] Open venv folder in Explorer
-- [ ] Delete venv with confirmation
-- [ ] Left-click loads packages
-- [ ] Right-click doesn't reload packages
-
-#### Package Management
-- [ ] Packages load incrementally
-- [ ] Search filters packages in real-time
-- [ ] Package sizes calculate correctly
-- [ ] Total size displays
-- [ ] Update package to latest version
-- [ ] Downgrade to specific version
-- [ ] Uninstall package
-- [ ] Re-selection doesn't reload unnecessarily
-
-#### Python Version Management
-- [ ] Set default Python updates PATH
-- [ ] Open Python folder works
-- [ ] Right-click doesn't load packages
-- [ ] Setting new default removes old from PATH priority
-
-#### UI/UX
-- [ ] Panels resize smoothly
-- [ ] Horizontal scrollbars appear when needed
-- [ ] Status bar updates in real-time
-- [ ] Progress indicators show for long operations
-- [ ] Dialogs display confirmations clearly
-- [ ] No lag during package search
-
-#### Configuration
-- [ ] Settings saved across restarts
-- [ ] Scan folders persist
-- [ ] Config file location correct: `%LOCALAPPDATA%\PyLite_Manager\config.json`
-- [ ] Manual config edits are respected
-
-### Automated Testing (Future)
-
-To add automated tests:
-
-```bash
-# Install pytest
-pip install pytest pytest-cov
-
-# Run tests
-pytest tests/
-
-# Generate coverage report
-pytest --cov=core --cov=ui --cov=utils tests/
-```
-
-Test areas:
-- Python detector accuracy
-- Venv discovery algorithm
-- Package manager operations
-- Configuration persistence
-- Windows PATH manipulation
-
----
-
-## Contributors
-
-**Project Creator & Maintainer**:
-- **Thanniru Sai Teja**
-
-This project was created to provide a simple, efficient tool for managing multiple Python environments and packages on Windows without external dependencies.
-
----
-
-## License
-
-### MIT License
-
-Copyright (c) 2026 Thanniru Sai Teja
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 
 ---
 
