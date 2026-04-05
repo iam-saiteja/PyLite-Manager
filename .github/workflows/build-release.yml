@@ -58,7 +58,7 @@ jobs:
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/PyLiteManager.exe
+        files: dist/PyLite_Manager/PyLite_Manager.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
@@ -66,5 +66,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: PyLiteManager-executable
-        path: dist/PyLiteManager.exe
+        path: dist/PyLite_Manager/PyLite_Manager.exe
         retention-days: 30
