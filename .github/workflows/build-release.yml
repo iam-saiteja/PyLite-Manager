@@ -1,0 +1,70 @@
+name: Build and Release Executable
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Validate code and imports
+      run: |
+        python -m py_compile main.py
+        python -m py_compile core/python_detector.py
+        python -m py_compile core/venv_manager.py
+        python -m py_compile core/package_manager.py
+        python -m py_compile core/windows_path.py
+        python -m py_compile ui/main_window.py
+        python -m py_compile ui/venv_panel.py
+        python -m py_compile ui/package_panel.py
+        python -m py_compile utils/helpers.py
+        python -m py_compile utils/config.py
+        echo "✓ All modules validated successfully"
+
+  build:
+    needs: test
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+    
+    - name: Build executable with PyInstaller
+      run: |
+        pyinstaller PyLite_Manager.spec
+    
+    - name: Upload to Release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/PyLiteManager.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: PyLiteManager-executable
+        path: dist/PyLiteManager.exe
+        retention-days: 30
