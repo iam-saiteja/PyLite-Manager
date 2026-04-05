@@ -1,8 +1,9 @@
 name: Build and Release Executable
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -56,18 +57,20 @@ jobs:
     - name: Build executable with PyInstaller
       run: |
         pyinstaller PyLite_Manager.spec
-    
-    - name: Upload to Release
-      if: github.event_name == 'release'
-      uses: softprops/action-gh-release@v1
-      with:
-        files: dist/PyLite_Manager/PyLite_Manager.exe
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: PyLiteManager-executable
         path: dist/PyLite_Manager/PyLite_Manager.exe
         retention-days: 30
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: build-${{ github.run_number }}
+        name: Build ${{ github.run_number }}
+        target_commitish: ${{ github.sha }}
+        generate_release_notes: true
+        files: dist/PyLite_Manager/PyLite_Manager.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
