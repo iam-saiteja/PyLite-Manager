@@ -148,8 +148,8 @@ A comprehensive, lightweight desktop application for managing Python environment
 ### Method 2: Standalone Executable
 
 If a compiled `.exe` is available:
-1. Download the executable from the releases page
-2. Run directly without installing Python
+1. Download the built executable (`PyLite_Manager.exe`)
+2. Open it from the `dist/` folder
 3. Application data will be stored in `%LOCALAPPDATA%\PyLite_Manager\`
 
 ### Method 3: Create a Desktop Shortcut

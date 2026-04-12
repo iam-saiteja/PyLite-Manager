@@ -12,7 +12,6 @@ ENV/
 
 # Build / packaging
 build/
-dist/
 # *.spec  # Uncomment to ignore spec files
 PyLite_Manager.spec  # Include our spec file in version control
 
