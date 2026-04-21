@@ -34,31 +34,34 @@ def _parse_pyvenv_cfg(config_path: Path) -> str:
 
 
 def _looks_like_venv(directory: Path) -> tuple[bool, Path | None]:
-    config_path = directory / "pyvenv.cfg"
-    if config_path.is_file():
-        return True, config_path
+    try:
+        config_path = directory / "pyvenv.cfg"
+        if config_path.is_file():
+            return True, config_path
 
-    scripts_python = directory / "Scripts" / "python.exe"
-    scripts_activate = directory / "Scripts" / "activate.bat"
-    scripts_pip = directory / "Scripts" / "pip.exe"
-    lib_site_packages = directory / "Lib" / "site-packages"
-    if scripts_python.is_file() and (scripts_activate.is_file() or scripts_pip.is_file() or lib_site_packages.is_dir()):
-        return True, config_path if config_path.exists() else None
+        scripts_python = directory / "Scripts" / "python.exe"
+        scripts_activate = directory / "Scripts" / "activate.bat"
+        scripts_pip = directory / "Scripts" / "pip.exe"
+        lib_site_packages = directory / "Lib" / "site-packages"
+        if scripts_python.is_file() and (scripts_activate.is_file() or scripts_pip.is_file() or lib_site_packages.is_dir()):
+            return True, config_path if config_path.exists() else None
 
-    scripts_dir = directory / "Scripts"
-    if scripts_dir.is_dir() and lib_site_packages.is_dir():
-        return True, config_path if config_path.exists() else None
+        scripts_dir = directory / "Scripts"
+        if scripts_dir.is_dir() and lib_site_packages.is_dir():
+            return True, config_path if config_path.exists() else None
 
-    bin_python = directory / "bin" / "python"
-    bin_activate = directory / "bin" / "activate"
-    bin_pip = directory / "bin" / "pip"
-    unix_site_packages = directory / "lib"
-    if bin_python.is_file() and (bin_activate.is_file() or bin_pip.is_file() or unix_site_packages.is_dir()):
-        return True, config_path if config_path.exists() else None
+        bin_python = directory / "bin" / "python"
+        bin_activate = directory / "bin" / "activate"
+        bin_pip = directory / "bin" / "pip"
+        unix_site_packages = directory / "lib"
+        if bin_python.is_file() and (bin_activate.is_file() or bin_pip.is_file() or unix_site_packages.is_dir()):
+            return True, config_path if config_path.exists() else None
 
-    bin_dir = directory / "bin"
-    if bin_dir.is_dir() and unix_site_packages.is_dir():
-        return True, config_path if config_path.exists() else None
+        bin_dir = directory / "bin"
+        if bin_dir.is_dir() and unix_site_packages.is_dir():
+            return True, config_path if config_path.exists() else None
+    except PermissionError:
+        pass
 
     return False, None
 
@@ -128,28 +131,75 @@ def find_venvs(scan_roots: Iterable[Path]) -> list[VenvInfo]:
     return sorted(discovered.values(), key=lambda item: (item.name.lower(), str(item.path).lower()))
 
 
+import sys
+
 def open_venv_terminal(venv_path: Path) -> None:
-    activate_path = venv_path / "Scripts" / "activate.bat"
-    scripts_path = venv_path / "Scripts"
-    root_python = venv_path / "python.exe"
-    scripts_python = scripts_path / "python.exe"
-    if activate_path.exists():
-        command = f'cd /d "{venv_path}" && call "{activate_path}"'
-    elif scripts_python.exists():
-        command = (
-            f'cd /d "{venv_path}" && '
-            f'set "VIRTUAL_ENV={venv_path}" && '
-            f'set "PATH={scripts_path};%PATH%"'
-        )
-    elif root_python.exists():
-        command = f'cd /d "{venv_path}" && set "PATH={venv_path};%PATH%"'
+    if sys.platform == "win32":
+        activate_path = venv_path / "Scripts" / "activate.bat"
+        scripts_path = venv_path / "Scripts"
+        root_python = venv_path / "python.exe"
+        scripts_python = scripts_path / "python.exe"
+        if activate_path.exists():
+            command = f'cd /d "{venv_path}" && call "{activate_path}"'
+        elif scripts_python.exists():
+            command = (
+                f'cd /d "{venv_path}" && '
+                f'set "VIRTUAL_ENV={venv_path}" && '
+                f'set "PATH={scripts_path};%PATH%"'
+            )
+        elif root_python.exists():
+            command = f'cd /d "{venv_path}" && set "PATH={venv_path};%PATH%"'
+        else:
+            command = f'cd /d "{venv_path}"'
+        subprocess.Popen(["cmd.exe", "/k", command])
     else:
-        command = f'cd /d "{venv_path}"'
-    subprocess.Popen(["cmd.exe", "/k", command])
+        import tempfile
+        import shlex
+
+        activate_path = venv_path / "bin" / "activate"
+        bin_path = venv_path / "bin"
+
+        # Safely quote the venv path to prevent command injection
+        safe_venv_path = shlex.quote(str(venv_path))
+        safe_activate_path = shlex.quote(str(activate_path))
+        safe_bin_path = shlex.quote(str(bin_path))
+
+        if activate_path.exists():
+            command = f'cd {safe_venv_path} && source {safe_activate_path} && exec $SHELL'
+        elif (bin_path / "python").exists():
+            command = f'cd {safe_venv_path} && export VIRTUAL_ENV={safe_venv_path} && export PATH="{safe_bin_path}:$PATH" && exec $SHELL'
+        else:
+            command = f'cd {safe_venv_path} && exec $SHELL'
+
+        if sys.platform == "darwin":
+            # On macOS, use open with Terminal or iTerm depending on what's available,
+            # but simplest is generating a temp script and executing it with Terminal
+            script = f'#!/bin/bash\n{command}\n'
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.sh') as f:
+                f.write(script)
+                temp_sh_path = f.name
+
+            Path(temp_sh_path).chmod(0o755)
+            subprocess.Popen(["open", "-a", "Terminal", temp_sh_path])
+        else:
+            # On Linux, try x-terminal-emulator, gnome-terminal, etc.
+            terminals = ["x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "xterm"]
+            for term in terminals:
+                if shutil.which(term):
+                    if term == "gnome-terminal":
+                        subprocess.Popen([term, "--", "bash", "-c", command])
+                    else:
+                        subprocess.Popen([term, "-e", "bash", "-c", command])
+                    break
 
 
 def open_folder(venv_path: Path) -> None:
-    subprocess.Popen(["explorer", str(venv_path)])
+    if sys.platform == "win32":
+        subprocess.Popen(["explorer", str(venv_path)])
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(venv_path)])
+    else:
+        subprocess.Popen(["xdg-open", str(venv_path)])
 
 
 def find_python_uninstaller(executable: Path) -> Path | None:

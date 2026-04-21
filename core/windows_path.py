@@ -3,7 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 import ctypes
 import os
-import winreg
+try:
+    import winreg
+except ImportError:
+    winreg = None
 
 
 def _normalize_entry(value: str) -> str:
@@ -19,6 +22,8 @@ def _join_path_entries(entries: list[str]) -> str:
 
 
 def get_user_path_entries() -> list[str]:
+    if winreg is None:
+        return []
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Environment", 0, winreg.KEY_READ) as key:
             value, _value_type = winreg.QueryValueEx(key, "Path")
@@ -30,6 +35,9 @@ def get_user_path_entries() -> list[str]:
 
 
 def set_user_path_entries(entries: list[str]) -> None:
+    if winreg is None:
+        raise OSError("Setting user path is only supported on Windows.")
+
     normalized_entries: list[str] = []
     seen: set[str] = set()
     for entry in entries:
@@ -70,6 +78,8 @@ def prioritize_python_on_user_path(python_executable: str | Path) -> list[str]:
 
 
 def _broadcast_environment_change() -> None:
+    if winreg is None:
+        return
     hwnd_broadcast = 0xFFFF
     wm_settingchange = 0x001A
     send_message_timeout = ctypes.windll.user32.SendMessageTimeoutW
