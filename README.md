@@ -27,6 +27,13 @@
 - **Python 3.9+**
 - `tkinter` and `pip` (included in most Python distributions)
 
+### Download & Run
+
+- **Windows**: Download and run the executable from the `dist` folder:
+  - `dist/PyLite_Manager.exe`
+- **Linux/macOS (non-Windows)**: No executable is provided. Please run the app using the Python script:
+  - `python main.py`
+
 ### Installation
 
 ```bash
