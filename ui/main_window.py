@@ -12,6 +12,8 @@ from core.package_manager import (
     stream_package_sizes,
     upgrade_package as pkg_upgrade,
     uninstall_package as pkg_uninstall,
+    export_requirements as pkg_export,
+    import_requirements as pkg_import,
 )
 from core.python_detector import detect_python_versions
 from core.venv_manager import create_venv, delete_venv, find_venvs, open_folder, open_venv_terminal, uninstall_python_installation
@@ -49,7 +51,21 @@ class MainWindow(tk.Tk):
             style.theme_use("clam")
         except tk.TclError:
             pass
-        style.configure("Section.TLabel", font=("Segoe UI", 10, "bold"))
+
+        # Modern color palette
+        bg_color = "#f4f5f7"
+        fg_color = "#333333"
+        accent_color = "#0078D7"
+
+        style.configure(".", background=bg_color, foreground=fg_color, font=("Segoe UI", 9))
+        style.configure("TFrame", background=bg_color)
+        style.configure("Section.TLabel", font=("Segoe UI", 11, "bold"), foreground=accent_color, background=bg_color)
+        style.configure("TLabel", background=bg_color)
+        style.configure("TButton", padding=6, relief="flat", background="#e1e1e1")
+        style.map("TButton", background=[("active", "#d4d4d4"), ("disabled", "#f0f0f0")])
+        style.configure("Treeview", background="#ffffff", fieldbackground="#ffffff", foreground=fg_color, rowheight=28, borderwidth=0)
+        style.map("Treeview", background=[("selected", accent_color)], foreground=[("selected", "#ffffff")])
+        style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"), relief="flat", background="#e1e1e1", padding=4)
 
     def _build_layout(self) -> None:
         root = ttk.Frame(self, padding=10)
@@ -74,6 +90,8 @@ class MainWindow(tk.Tk):
             on_update=self.upgrade_package,
             on_degrade=self.degrade_package,
             on_delete=self.uninstall_package,
+            on_export=self.export_requirements,
+            on_import=self.import_requirements,
         )
 
         self.status_var = tk.StringVar(value="Ready")
@@ -722,6 +740,65 @@ class MainWindow(tk.Tk):
         def error(exc):
             self.package_panel.end_action_progress("Upgrade failed.")
             messagebox.showerror("Upgrade Failed", f"Failed to upgrade {package_name}:\n\n{exc}", parent=self)
+            self.refresh_packages()
+
+        self.run_async(worker, success, error)
+
+    def export_requirements(self) -> None:
+        python_executable = self._require_selected_python()
+        if python_executable is None:
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            parent=self,
+            title="Export requirements.txt",
+            defaultextension=".txt",
+            initialfile="requirements.txt",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+        )
+        if not file_path:
+            return
+
+        def worker() -> None:
+            pkg_export(python_executable, file_path)
+
+        def error(exc: Exception) -> None:
+            messagebox.showerror("Export Failed", str(exc), parent=self)
+
+        def success() -> None:
+            messagebox.showinfo(
+                "Export Success",
+                f"Successfully exported requirements to {Path(file_path).name}.",
+                parent=self,
+            )
+
+        self.run_async(worker, success, error)
+
+    def import_requirements(self) -> None:
+        python_executable = self._require_selected_python()
+        if python_executable is None:
+            return
+
+        file_path = filedialog.askopenfilename(
+            parent=self,
+            title="Import requirements.txt",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")],
+        )
+        if not file_path:
+            return
+
+        def worker() -> None:
+            pkg_import(python_executable, file_path)
+
+        def error(exc: Exception) -> None:
+            messagebox.showerror("Import Failed", str(exc), parent=self)
+
+        def success() -> None:
+            messagebox.showinfo(
+                "Import Success",
+                f"Successfully imported requirements from {Path(file_path).name}.",
+                parent=self,
+            )
             self.refresh_packages()
 
         self.run_async(worker, success, error)

@@ -146,24 +146,36 @@ class VenvPanel(ttk.Frame):
         self._python_lookup = {}
         for item in self.python_tree.get_children():
             self.python_tree.delete(item)
-        for version in versions:
+        for i, version in enumerate(versions):
+            tag = "even" if i % 2 == 0 else "odd"
             item_id = self.python_tree.insert(
                 "",
                 tk.END,
                 values=(version.display, version.executable, "Yes" if getattr(version, "is_default", False) else ""),
+                tags=(tag,)
             )
             self._python_lookup[item_id] = version
+
+        self.python_tree.tag_configure("even", background="#ffffff")
+        self.python_tree.tag_configure("odd", background="#f9f9f9")
 
     def set_venvs(self, venvs) -> None:
         self._venv_lookup = {}
         for item in self.venv_tree.get_children():
             self.venv_tree.delete(item)
         filter_text = self.get_search_text()
+
+        display_index = 0
         for venv in venvs:
             if filter_text and filter_text not in venv.name.lower() and filter_text not in str(venv.path).lower():
                 continue
-            item_id = self.venv_tree.insert("", tk.END, values=(venv.name, str(venv.path), venv.python_version))
+            tag = "even" if display_index % 2 == 0 else "odd"
+            item_id = self.venv_tree.insert("", tk.END, values=(venv.name, str(venv.path), venv.python_version), tags=(tag,))
             self._venv_lookup[item_id] = venv
+            display_index += 1
+
+        self.venv_tree.tag_configure("even", background="#ffffff")
+        self.venv_tree.tag_configure("odd", background="#f9f9f9")
 
     def get_selected_venv(self):
         selection = self.venv_tree.selection()

@@ -230,6 +230,42 @@ def uninstall_package(python_executable: Path | str, package_name: str) -> str:
     return result.combined_output
 
 
+def export_requirements(python_executable: Path | str, output_file: Path | str) -> str:
+    python_exe = _normalize_python_executable(python_executable)
+    result = run_command([
+        str(python_exe),
+        "-m",
+        "pip",
+        "freeze",
+    ])
+
+    if result.returncode == 0:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(result.stdout)
+    else:
+        raise RuntimeError(result.combined_output or "Failed to export requirements")
+
+    return result.combined_output
+
+
+def import_requirements(python_executable: Path | str, input_file: Path | str) -> str:
+    python_exe = _normalize_python_executable(python_executable)
+    result = run_command([
+        str(python_exe),
+        "-m",
+        "pip",
+        "install",
+        "-r",
+        str(input_file),
+        "--disable-pip-version-check",
+    ])
+
+    if result.returncode != 0:
+        raise RuntimeError(result.combined_output or "Failed to import requirements")
+
+    return result.combined_output
+
+
 def upgrade_package(python_executable: Path | str, package_name: str) -> str:
     python_exe = _normalize_python_executable(python_executable)
     result = run_command([
