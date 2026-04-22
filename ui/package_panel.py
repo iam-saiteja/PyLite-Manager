@@ -26,8 +26,17 @@ class PackagePanel(ttk.Frame):
         self.refresh_btn = ttk.Button(top_header, text="\u21bb Refresh", state=tk.DISABLED)
         self.refresh_btn.pack(side=tk.RIGHT)
 
+        self.export_btn = ttk.Button(top_header, text="Export", state=tk.DISABLED)
+        self.export_btn.pack(side=tk.RIGHT, padx=(5, 0))
+
+        self.import_btn = ttk.Button(top_header, text="Import", state=tk.DISABLED)
+        self.import_btn.pack(side=tk.RIGHT, padx=(5, 0))
+
+        self.stats_btn = ttk.Button(top_header, text="Stats", state=tk.DISABLED)
+        self.stats_btn.pack(side=tk.RIGHT, padx=(10, 0))
+
         search_frame = ttk.Frame(top_header)
-        search_frame.pack(side=tk.RIGHT, padx=10)
+        search_frame.pack(side=tk.RIGHT, padx=(10, 0))
         ttk.Label(search_frame, text="Search:").pack(side=tk.LEFT, padx=(0, 5))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", self._on_search_change)
@@ -83,14 +92,21 @@ class PackagePanel(ttk.Frame):
         self._search_timer = None
         self._action_progress_visible = False
 
-    def set_callbacks(self, on_refresh=None, on_update=None, on_degrade=None, on_delete=None) -> None:
+    def set_callbacks(self, on_refresh=None, on_install=None, on_update=None, on_degrade=None, on_delete=None, on_export=None, on_import=None, on_stats=None) -> None:
         self._on_refresh_callback = on_refresh
         self._on_update_callback = on_update
         self._on_degrade_callback = on_degrade
         self._on_delete_callback = on_delete
+        self._on_stats_callback = on_stats
 
         if on_refresh:
             self.refresh_btn.config(command=on_refresh, state=tk.NORMAL)
+        if on_export:
+            self.export_btn.config(command=on_export, state=tk.NORMAL)
+        if on_import:
+            self.import_btn.config(command=on_import, state=tk.NORMAL)
+        if on_stats:
+            self.stats_btn.config(command=on_stats, state=tk.NORMAL)
 
     def _on_search_change(self, *args) -> None:
         if not self._all_packages:
@@ -137,12 +153,18 @@ class PackagePanel(ttk.Frame):
             self.size_var.set("")
             self.search_entry.config(state=tk.DISABLED)
             self.refresh_btn.config(state=tk.DISABLED)
+            self.export_btn.config(state=tk.DISABLED)
+            self.import_btn.config(state=tk.DISABLED)
+            self.stats_btn.config(state=tk.DISABLED)
         else:
             self.details_var.set(label)
             self.loading_var.set("Loading packages...")
             self.size_var.set("Calculating total size...")
             self.search_entry.config(state=tk.NORMAL)
             self.refresh_btn.config(state=tk.NORMAL)
+            self.export_btn.config(state=tk.NORMAL)
+            self.import_btn.config(state=tk.NORMAL)
+            self.stats_btn.config(state=tk.NORMAL)
         self.clear_packages()
         self._all_packages.clear()
         self.search_var.set("")
@@ -210,10 +232,14 @@ class PackagePanel(ttk.Frame):
                 return  # Another render started
             
             end_index = min(start_index + chunk_size, len(package_list))
-            for item in package_list[start_index:end_index]:
+            for i, item in enumerate(package_list[start_index:end_index], start=start_index):
                 size_str = format_bytes(item.size_bytes) if getattr(item, "size_bytes", 0) > 0 else "..."
-                row_id = self.tree.insert("", tk.END, values=(item.name, item.version, size_str))
+                tag = "even" if i % 2 == 0 else "odd"
+                row_id = self.tree.insert("", tk.END, values=(item.name, item.version, size_str), tags=(tag,))
                 self._row_ids_by_name.setdefault(item.name.lower(), []).append(row_id)
+
+            self.tree.tag_configure("even", background="#ffffff")
+            self.tree.tag_configure("odd", background="#f9f9f9")
 
             if end_index < len(package_list):
                 if not is_search:

@@ -94,6 +94,9 @@ class VenvPanel(ttk.Frame):
         self.venv_menu = tk.Menu(self, tearoff=0)
         self.venv_menu.add_command(label="Open Folder", command=self._open_selected_venv_folder)
         self.venv_menu.add_separator()
+        self.venv_menu.add_command(label="Backup Environment", command=self._backup_selected_venv)
+        self.venv_menu.add_command(label="Clone Environment", command=self._clone_selected_venv)
+        self.venv_menu.add_separator()
         self.venv_menu.add_command(label="Delete", command=self._delete_selected_venv)
 
         self.python_menu = tk.Menu(self, tearoff=0)
@@ -119,6 +122,10 @@ class VenvPanel(ttk.Frame):
 
     def set_venv_delete_action(self, delete_venv_callback) -> None:
         self._delete_venv_callback = delete_venv_callback
+
+    def set_venv_advanced_actions(self, backup_venv_callback, clone_venv_callback) -> None:
+        self._backup_venv_callback = backup_venv_callback
+        self._clone_venv_callback = clone_venv_callback
 
     def set_python_context_actions(self, open_folder_callback) -> None:
         self._open_python_folder_callback = open_folder_callback
@@ -146,24 +153,36 @@ class VenvPanel(ttk.Frame):
         self._python_lookup = {}
         for item in self.python_tree.get_children():
             self.python_tree.delete(item)
-        for version in versions:
+        for i, version in enumerate(versions):
+            tag = "even" if i % 2 == 0 else "odd"
             item_id = self.python_tree.insert(
                 "",
                 tk.END,
                 values=(version.display, version.executable, "Yes" if getattr(version, "is_default", False) else ""),
+                tags=(tag,)
             )
             self._python_lookup[item_id] = version
+
+        self.python_tree.tag_configure("even", background="#ffffff")
+        self.python_tree.tag_configure("odd", background="#f9f9f9")
 
     def set_venvs(self, venvs) -> None:
         self._venv_lookup = {}
         for item in self.venv_tree.get_children():
             self.venv_tree.delete(item)
         filter_text = self.get_search_text()
+
+        display_index = 0
         for venv in venvs:
             if filter_text and filter_text not in venv.name.lower() and filter_text not in str(venv.path).lower():
                 continue
-            item_id = self.venv_tree.insert("", tk.END, values=(venv.name, str(venv.path), venv.python_version))
+            tag = "even" if display_index % 2 == 0 else "odd"
+            item_id = self.venv_tree.insert("", tk.END, values=(venv.name, str(venv.path), venv.python_version), tags=(tag,))
             self._venv_lookup[item_id] = venv
+            display_index += 1
+
+        self.venv_tree.tag_configure("even", background="#ffffff")
+        self.venv_tree.tag_configure("odd", background="#f9f9f9")
 
     def get_selected_venv(self):
         selection = self.venv_tree.selection()
@@ -216,6 +235,14 @@ class VenvPanel(ttk.Frame):
     def _delete_selected_venv(self) -> None:
         if self._delete_venv_callback is not None and self._context_venv is not None:
             self._delete_venv_callback(self._context_venv)
+
+    def _backup_selected_venv(self) -> None:
+        if self._context_venv and getattr(self, "_backup_venv_callback", None):
+            self._backup_venv_callback(self._context_venv)
+
+    def _clone_selected_venv(self) -> None:
+        if self._context_venv and getattr(self, "_clone_venv_callback", None):
+            self._clone_venv_callback(self._context_venv)
 
     def _open_selected_python_folder(self) -> None:
         if self._open_python_folder_callback is not None and self._context_python is not None:
