@@ -16,8 +16,11 @@
 - **🌐 Cross-Platform:** Fully supports Windows, Linux, and macOS environments!
 - **🔍 Auto-Detection:** Automatically detects Python installations registered with standard tools (`py`, `which`, PATH).
 - **📦 Advanced Package Management:** View, search, install, update, downgrade, and uninstall pip packages effortlessly.
+- **📊 Package Insights:** Check quick package statistics for the selected Python/venv target.
 - **📄 Requirements Import/Export:** Instantly generate or install from `requirements.txt` with a single click.
 - **📂 Virtual Environments:** Recursively discover and manage virtual environments across multiple directories.
+- **🧬 Venv Backup & Clone:** Backup a virtual environment as a zip and clone it into a new location.
+- **🧹 Python Install Maintenance (Windows):** Open install location, launch uninstaller, and set default Python in user PATH.
 - **⚡ Blazing Fast UI:** Built with Tkinter with multi-threading and a modern striped UI.
 - **🛠 System Integration:** Open interactive shell terminals configured precisely for the selected environment.
 
@@ -26,6 +29,15 @@
 ### Requirements
 - **Python 3.9+**
 - `tkinter` and `pip` (included in most Python distributions)
+
+### Download & Run
+
+- **Windows:** Download and run [dist/PyLite_Manager.exe](dist/PyLite_Manager.exe).
+- **Linux/macOS (non-Windows):** No executable is provided. Run with script:
+
+```bash
+python3 main.py
+```
 
 ### Installation
 
@@ -59,8 +71,10 @@ graph TD;
 1. **Launch**: Start via `python main.py`.
 2. **Discover**: Add scan folders in the left panel to discover scattered virtual environments instantly.
 3. **Manage Packages**: Select an environment, and seamlessly update or search packages on the right panel.
-4. **Export Requirements**: Click **Export** to quickly snapshot the environment state.
-5. **Set Defaults**: (Windows only) Set your desired global Python version effortlessly.
+4. **Check Stats**: Click **Stats** for package count and version distribution insights.
+5. **Export/Import Requirements**: Snapshot or restore environment state using `requirements.txt`.
+6. **Backup/Clone Venvs**: Right-click an environment to backup or clone it.
+7. **Set Defaults**: (Windows only) Set your desired global Python version effortlessly.
 
 ## 🛠 Troubleshooting
 
@@ -86,5 +100,5 @@ Please feel free to submit pull requests or raise issues.
 
 ---
 <div align="center">
-  <i>Built to blow minds. 🧠 Let's make Python development easier together.</i>
+  <i>Let's make Python development easier together.</i>
 </div>
