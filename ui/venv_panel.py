@@ -94,6 +94,9 @@ class VenvPanel(ttk.Frame):
         self.venv_menu = tk.Menu(self, tearoff=0)
         self.venv_menu.add_command(label="Open Folder", command=self._open_selected_venv_folder)
         self.venv_menu.add_separator()
+        self.venv_menu.add_command(label="Backup Environment", command=self._backup_selected_venv)
+        self.venv_menu.add_command(label="Clone Environment", command=self._clone_selected_venv)
+        self.venv_menu.add_separator()
         self.venv_menu.add_command(label="Delete", command=self._delete_selected_venv)
 
         self.python_menu = tk.Menu(self, tearoff=0)
@@ -119,6 +122,10 @@ class VenvPanel(ttk.Frame):
 
     def set_venv_delete_action(self, delete_venv_callback) -> None:
         self._delete_venv_callback = delete_venv_callback
+
+    def set_venv_advanced_actions(self, backup_venv_callback, clone_venv_callback) -> None:
+        self._backup_venv_callback = backup_venv_callback
+        self._clone_venv_callback = clone_venv_callback
 
     def set_python_context_actions(self, open_folder_callback) -> None:
         self._open_python_folder_callback = open_folder_callback
@@ -228,6 +235,14 @@ class VenvPanel(ttk.Frame):
     def _delete_selected_venv(self) -> None:
         if self._delete_venv_callback is not None and self._context_venv is not None:
             self._delete_venv_callback(self._context_venv)
+
+    def _backup_selected_venv(self) -> None:
+        if self._context_venv and getattr(self, "_backup_venv_callback", None):
+            self._backup_venv_callback(self._context_venv)
+
+    def _clone_selected_venv(self) -> None:
+        if self._context_venv and getattr(self, "_clone_venv_callback", None):
+            self._clone_venv_callback(self._context_venv)
 
     def _open_selected_python_folder(self) -> None:
         if self._open_python_folder_callback is not None and self._context_python is not None:

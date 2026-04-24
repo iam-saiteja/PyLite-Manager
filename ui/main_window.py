@@ -14,6 +14,8 @@ from core.package_manager import (
     uninstall_package as pkg_uninstall,
     export_requirements as pkg_export,
     import_requirements as pkg_import,
+    export_requirements as pkg_export,
+    import_requirements as pkg_import,
 )
 from core.python_detector import detect_python_versions
 from core.venv_manager import create_venv, delete_venv, find_venvs, open_folder, open_venv_terminal, uninstall_python_installation
@@ -67,6 +69,21 @@ class MainWindow(tk.Tk):
         style.map("Treeview", background=[("selected", accent_color)], foreground=[("selected", "#ffffff")])
         style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"), relief="flat", background="#e1e1e1", padding=4)
 
+        # Modern color palette
+        bg_color = "#f4f5f7"
+        fg_color = "#333333"
+        accent_color = "#0078D7"
+
+        style.configure(".", background=bg_color, foreground=fg_color, font=("Segoe UI", 9))
+        style.configure("TFrame", background=bg_color)
+        style.configure("Section.TLabel", font=("Segoe UI", 11, "bold"), foreground=accent_color, background=bg_color)
+        style.configure("TLabel", background=bg_color)
+        style.configure("TButton", padding=6, relief="flat", background="#e1e1e1")
+        style.map("TButton", background=[("active", "#d4d4d4"), ("disabled", "#f0f0f0")])
+        style.configure("Treeview", background="#ffffff", fieldbackground="#ffffff", foreground=fg_color, rowheight=28, borderwidth=0)
+        style.map("Treeview", background=[("selected", accent_color)], foreground=[("selected", "#ffffff")])
+        style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"), relief="flat", background="#e1e1e1", padding=4)
+
     def _build_layout(self) -> None:
         root = ttk.Frame(self, padding=10)
         root.pack(fill=tk.BOTH, expand=True)
@@ -92,6 +109,7 @@ class MainWindow(tk.Tk):
             on_delete=self.uninstall_package,
             on_export=self.export_requirements,
             on_import=self.import_requirements,
+            on_stats=self.show_package_stats,
         )
 
         self.status_var = tk.StringVar(value="Ready")
@@ -111,6 +129,7 @@ class MainWindow(tk.Tk):
         )
         self.venv_panel.set_venv_context_actions(self.open_selected_folder)
         self.venv_panel.set_venv_delete_action(self.delete_selected_venv)
+        self.venv_panel.set_venv_advanced_actions(self.backup_selected_venv, self.clone_selected_venv)
         self.venv_panel.set_python_context_actions(self.open_selected_python_folder)
         self.venv_panel.set_selection_callbacks(self.select_python_version, self.select_venv)
 
@@ -690,6 +709,101 @@ class MainWindow(tk.Tk):
 
         self.run_async(worker, success, error, status_message="Deleting virtual environment...", completion_message=None)
 
+    def backup_selected_venv(self, venv=None) -> None:
+        import shutil
+        if venv is None:
+            venv = self._require_selected_venv()
+        if venv is None:
+            return
+
+        default_name = f"{venv.name}_backup.zip"
+        save_path = filedialog.asksaveasfilename(
+            parent=self,
+            title="Backup Environment",
+            defaultextension=".zip",
+            initialfile=default_name,
+            filetypes=[("Zip files", "*.zip"), ("All files", "*.*")],
+        )
+        if not save_path:
+            return
+
+        base_name = save_path
+        if base_name.endswith('.zip'):
+            base_name = base_name[:-4]
+
+        self._begin_status_progress(f"Backing up {venv.name}...")
+
+        def worker() -> None:
+            shutil.make_archive(base_name, 'zip', str(venv.path))
+
+        def success() -> None:
+            self._end_status_progress("Backup completed.")
+            messagebox.showinfo("Backup Success", f"Successfully backed up '{venv.name}'.", parent=self)
+
+        def error(exc: Exception) -> None:
+            self._end_status_progress("Backup failed.")
+            messagebox.showerror("Backup Failed", str(exc), parent=self)
+
+        self.run_async(worker, success, error)
+
+    def clone_selected_venv(self, venv=None) -> None:
+        import sys
+        if venv is None:
+            venv = self._require_selected_venv()
+        if venv is None:
+            return
+
+        target_dir = filedialog.askdirectory(parent=self, title="Select Clone Target Directory")
+        if not target_dir:
+            return
+
+        self._begin_status_progress(f"Cloning {venv.name}...")
+
+        def worker() -> None:
+            import tempfile
+            from core.package_manager import export_requirements, import_requirements
+
+            # Resolve venv python
+            if sys.platform == "win32":
+                src_python = venv.path / "Scripts" / "python.exe"
+            else:
+                src_python = venv.path / "bin" / "python"
+
+            # Create target venv
+            if sys.platform == "win32":
+                create_venv(Path(target_dir), None)
+            else:
+                import subprocess
+                subprocess.run(["python3", "-m", "venv", target_dir])
+
+            # Export from source to temp file
+            with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.txt') as tmp:
+                req_file = tmp.name
+
+            try:
+                export_requirements(src_python, req_file)
+
+                # Import to target
+                if sys.platform == "win32":
+                    tgt_python = Path(target_dir) / "Scripts" / "python.exe"
+                else:
+                    tgt_python = Path(target_dir) / "bin" / "python"
+
+                import_requirements(tgt_python, req_file)
+            finally:
+                Path(req_file).unlink(missing_ok=True)
+
+        def success() -> None:
+            self._end_status_progress("Clone completed.")
+            messagebox.showinfo("Clone Success", f"Successfully cloned '{venv.name}'.", parent=self)
+            self.refresh_virtual_environments()
+
+        def error(exc: Exception) -> None:
+            self._end_status_progress("Clone failed.")
+            messagebox.showerror("Clone Failed", str(exc), parent=self)
+
+        self.run_async(worker, success, error)
+
     def upgrade_package(self, package_name: str) -> None:
         python_executable = self._require_selected_python()
         if python_executable is None:
@@ -802,6 +916,29 @@ class MainWindow(tk.Tk):
             self.refresh_packages()
 
         self.run_async(worker, success, error)
+
+    def show_package_stats(self) -> None:
+        python_executable = self._require_selected_python()
+        if python_executable is None:
+            return
+
+        all_packages = self.package_panel._all_packages
+        if not all_packages:
+            messagebox.showinfo("Package Stats", "No packages loaded or environment is empty.", parent=self)
+            return
+
+        total_count = len(all_packages)
+        total_bytes = sum(getattr(pkg, "size_bytes", 0) for pkg in all_packages)
+
+        stats_message = (
+            f"Package Statistics\n"
+            f"------------------\n"
+            f"Total Packages: {total_count}\n"
+            f"Total Size: {format_bytes(total_bytes)}\n\n"
+            f"Target: {python_executable}"
+        )
+
+        messagebox.showinfo("Package Stats", stats_message, parent=self)
 
     def degrade_package(self, package_name: str) -> None:
         python_executable = self._require_selected_python()
