@@ -14,6 +14,8 @@ from core.package_manager import (
     uninstall_package as pkg_uninstall,
     export_requirements as pkg_export,
     import_requirements as pkg_import,
+    export_requirements as pkg_export,
+    import_requirements as pkg_import,
 )
 from core.python_detector import detect_python_versions
 from core.venv_manager import create_venv, delete_venv, find_venvs, open_folder, open_venv_terminal, uninstall_python_installation
@@ -51,6 +53,21 @@ class MainWindow(tk.Tk):
             style.theme_use("clam")
         except tk.TclError:
             pass
+
+        # Modern color palette
+        bg_color = "#f4f5f7"
+        fg_color = "#333333"
+        accent_color = "#0078D7"
+
+        style.configure(".", background=bg_color, foreground=fg_color, font=("Segoe UI", 9))
+        style.configure("TFrame", background=bg_color)
+        style.configure("Section.TLabel", font=("Segoe UI", 11, "bold"), foreground=accent_color, background=bg_color)
+        style.configure("TLabel", background=bg_color)
+        style.configure("TButton", padding=6, relief="flat", background="#e1e1e1")
+        style.map("TButton", background=[("active", "#d4d4d4"), ("disabled", "#f0f0f0")])
+        style.configure("Treeview", background="#ffffff", fieldbackground="#ffffff", foreground=fg_color, rowheight=28, borderwidth=0)
+        style.map("Treeview", background=[("selected", accent_color)], foreground=[("selected", "#ffffff")])
+        style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"), relief="flat", background="#e1e1e1", padding=4)
 
         # Modern color palette
         bg_color = "#f4f5f7"

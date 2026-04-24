@@ -37,6 +37,7 @@ class PackagePanel(ttk.Frame):
 
         search_frame = ttk.Frame(top_header)
         search_frame.pack(side=tk.RIGHT, padx=(10, 0))
+        search_frame.pack(side=tk.RIGHT, padx=(10, 0))
         ttk.Label(search_frame, text="Search:").pack(side=tk.LEFT, padx=(0, 5))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", self._on_search_change)
@@ -233,10 +234,16 @@ class PackagePanel(ttk.Frame):
             
             end_index = min(start_index + chunk_size, len(package_list))
             for i, item in enumerate(package_list[start_index:end_index], start=start_index):
+            for i, item in enumerate(package_list[start_index:end_index], start=start_index):
                 size_str = format_bytes(item.size_bytes) if getattr(item, "size_bytes", 0) > 0 else "..."
                 tag = "even" if i % 2 == 0 else "odd"
                 row_id = self.tree.insert("", tk.END, values=(item.name, item.version, size_str), tags=(tag,))
+                tag = "even" if i % 2 == 0 else "odd"
+                row_id = self.tree.insert("", tk.END, values=(item.name, item.version, size_str), tags=(tag,))
                 self._row_ids_by_name.setdefault(item.name.lower(), []).append(row_id)
+
+            self.tree.tag_configure("even", background="#ffffff")
+            self.tree.tag_configure("odd", background="#f9f9f9")
 
             self.tree.tag_configure("even", background="#ffffff")
             self.tree.tag_configure("odd", background="#f9f9f9")
